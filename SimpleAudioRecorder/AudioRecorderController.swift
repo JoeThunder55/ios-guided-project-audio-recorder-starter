@@ -23,6 +23,7 @@ class AudioRecorderController: UIViewController {
         didSet {
             guard let audioPlayer = audioPlayer else { return }
             audioPlayer.delegate = self
+            audioPlayer.isMeteringEnabled = true
         }
     }
     private lazy var timeIntervalFormatter: DateComponentsFormatter = {
@@ -55,12 +56,14 @@ class AudioRecorderController: UIViewController {
         playButton.isSelected = isPlaying
         let elapsedTime = audioPlayer?.currentTime ?? 0
         let duration = audioPlayer?.duration ?? 0
+        let timeRemaining = duration.rounded() - elapsedTime
         timeElapsedLabel.text = timeIntervalFormatter.string(from: elapsedTime)
         
         timeSlider.minimumValue = 0
         timeSlider.maximumValue = Float(duration)
         timeSlider.value = Float(elapsedTime)
         
+        timeRemainingLabel.text = "-" + timeIntervalFormatter.string(from: timeRemaining)!
     }
     deinit {
         timer?.invalidate()
@@ -76,7 +79,7 @@ class AudioRecorderController: UIViewController {
             guard let self = self else { return }
             
             self.updateViews()
-       /*
+     
             if let audioRecorder = self.audioRecorder,
                 self.isRecording == true {
                 
@@ -91,7 +94,7 @@ class AudioRecorderController: UIViewController {
                 audioPlayer.updateMeters()
                 self.audioVisualizer.addValue(decibelValue: audioPlayer.averagePower(forChannel: 0))
             }
- */
+ 
         }
     }
    
@@ -139,6 +142,7 @@ class AudioRecorderController: UIViewController {
     func pause() {
         audioPlayer?.pause()
         updateViews()
+        cancelTimer()
         
     }
     
@@ -207,8 +211,12 @@ class AudioRecorderController: UIViewController {
         }
     }
     
-    @IBAction func updateCurrentTime(_ sender: UISlider) {
-        
+    @IBAction func updateCurrentTime(_ sender: UISlider, event: UIEvent) {
+        if isPlaying {
+            pause()
+        }
+        audioPlayer?.currentTime = TimeInterval(sender.value)
+        updateViews()
     }
     
     @IBAction func toggleRecording(_ sender: Any) {
