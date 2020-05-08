@@ -7,6 +7,7 @@
 //
 
 import UIKit
+import AVFoundation
 
 class AudioRecorderController: UIViewController {
     
@@ -17,6 +18,7 @@ class AudioRecorderController: UIViewController {
     @IBOutlet var timeSlider: UISlider!
     @IBOutlet var audioVisualizer: AudioVisualizer!
     
+    var audioPlayer: AVAudioPlayer?
     private lazy var timeIntervalFormatter: DateComponentsFormatter = {
         // NOTE: DateComponentFormatter is good for minutes/hours/seconds
         // DateComponentsFormatter is not good for milliseconds, use DateFormatter instead)
@@ -80,27 +82,39 @@ class AudioRecorderController: UIViewController {
     
     
     // MARK: - Playback
+    var isPlaying: Bool {
+        audioPlayer?.isPlaying ?? false
+    }
     
     func loadAudio() {
         let songURL = Bundle.main.url(forResource: "piano", withExtension: "mp3")!
+        do {
+            audioPlayer = try AVAudioPlayer(contentsOf: songURL)
+        } catch {
+            preconditionFailure("Failure to load audio file: \(error)")
+        }
         
         
     }
     
-    /*
     func prepareAudioSession() throws {
         let session = AVAudioSession.sharedInstance()
         try session.setCategory(.playAndRecord, options: [.defaultToSpeaker])
         try session.setActive(true, options: []) // can fail if on a phone call, for instance
     }
-    */
     
     func play() {
+        do {
+            try prepareAudioSession()
+            audioPlayer?.play()
+        } catch {
+            print("Cannot Play Audio: \(error)")
+        }
         
     }
     
     func pause() {
-        
+        audioPlayer?.pause()
     }
     
     
@@ -161,7 +175,11 @@ class AudioRecorderController: UIViewController {
     // MARK: - Actions
     
     @IBAction func togglePlayback(_ sender: Any) {
-        
+        if isPlaying {
+            pause()
+        } else {
+            play()
+        }
     }
     
     @IBAction func updateCurrentTime(_ sender: UISlider) {
