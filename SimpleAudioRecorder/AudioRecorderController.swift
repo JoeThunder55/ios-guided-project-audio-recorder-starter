@@ -19,6 +19,8 @@ class AudioRecorderController: UIViewController {
     @IBOutlet var audioVisualizer: AudioVisualizer!
     
     weak var timer: Timer?
+    var recordingURL: URL?
+    var audioRecorder: AVAudioRecorder?
     var audioPlayer: AVAudioPlayer? {
         didSet {
             guard let audioPlayer = audioPlayer else { return }
@@ -148,6 +150,9 @@ class AudioRecorderController: UIViewController {
     
     
     // MARK: - Recording
+    var isRecording: Bool {
+        audioRecorder?.isRecording ?? false
+    }
     
     func createNewRecordingURL() -> URL {
         let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
@@ -155,7 +160,7 @@ class AudioRecorderController: UIViewController {
         let name = ISO8601DateFormatter.string(from: Date(), timeZone: .current, formatOptions: .withInternetDateTime)
         let file = documents.appendingPathComponent(name, isDirectory: false).appendingPathExtension("caf")
         
-//        print("recording URL: \(file)")
+        print("recording URL: \(file)")
         
         return file
     }
@@ -194,11 +199,24 @@ class AudioRecorderController: UIViewController {
     */
     
     func startRecording() {
-        
+        do {
+            try prepareAudioSession()
+        } catch {
+            print("There was an error: \(error)")
+            return
+        }
+        recordingURL = createNewRecordingURL()
+        let format = AVAudioFormat(standardFormatWithSampleRate: 44100, channels: 1)!
+        do {
+            audioRecorder = try AVAudioRecorder(url: recordingURL!, format: format)
+        } catch {
+            audioRecorder?.record()
+            preconditionFailure("Audio recorder could not be created with \(recordingURL!) and \(format)")
+        }
     }
     
     func stopRecording() {
-        
+        audioRecorder?.stop()
     }
     
     // MARK: - Actions
@@ -220,7 +238,11 @@ class AudioRecorderController: UIViewController {
     }
     
     @IBAction func toggleRecording(_ sender: Any) {
-        
+        if isRecording {
+            stopRecording()
+        } else {
+            startRecording()
+        }
     }
 }
 
