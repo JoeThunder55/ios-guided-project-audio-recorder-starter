@@ -18,7 +18,13 @@ class AudioRecorderController: UIViewController {
     @IBOutlet var timeSlider: UISlider!
     @IBOutlet var audioVisualizer: AudioVisualizer!
     
-    var audioPlayer: AVAudioPlayer?
+    weak var timer: Timer?
+    var audioPlayer: AVAudioPlayer? {
+        didSet {
+            guard let audioPlayer = audioPlayer else { return }
+            audioPlayer.delegate = self
+        }
+    }
     private lazy var timeIntervalFormatter: DateComponentsFormatter = {
         // NOTE: DateComponentFormatter is good for minutes/hours/seconds
         // DateComponentsFormatter is not good for milliseconds, use DateFormatter instead)
@@ -45,10 +51,24 @@ class AudioRecorderController: UIViewController {
         loadAudio()
     }
     
+    func updateViews() {
+        playButton.isSelected = isPlaying
+        let elapsedTime = audioPlayer?.currentTime ?? 0
+        let duration = audioPlayer?.duration ?? 0
+        timeElapsedLabel.text = timeIntervalFormatter.string(from: elapsedTime)
+        
+        timeSlider.minimumValue = 0
+        timeSlider.maximumValue = Float(duration)
+        timeSlider.value = Float(elapsedTime)
+        
+    }
+    deinit {
+        timer?.invalidate()
+    }
     
     // MARK: - Timer
     
-    /*
+    
     func startTimer() {
         timer?.invalidate()
         
@@ -56,7 +76,7 @@ class AudioRecorderController: UIViewController {
             guard let self = self else { return }
             
             self.updateViews()
-            
+       /*
             if let audioRecorder = self.audioRecorder,
                 self.isRecording == true {
                 
@@ -71,14 +91,15 @@ class AudioRecorderController: UIViewController {
                 audioPlayer.updateMeters()
                 self.audioVisualizer.addValue(decibelValue: audioPlayer.averagePower(forChannel: 0))
             }
+ */
         }
     }
-    
+   
     func cancelTimer() {
         timer?.invalidate()
         timer = nil
     }
-    */
+
     
     
     // MARK: - Playback
@@ -107,6 +128,8 @@ class AudioRecorderController: UIViewController {
         do {
             try prepareAudioSession()
             audioPlayer?.play()
+            updateViews()
+            startTimer()
         } catch {
             print("Cannot Play Audio: \(error)")
         }
@@ -115,6 +138,8 @@ class AudioRecorderController: UIViewController {
     
     func pause() {
         audioPlayer?.pause()
+        updateViews()
+        
     }
     
     
@@ -191,3 +216,16 @@ class AudioRecorderController: UIViewController {
     }
 }
 
+
+extension AudioRecorderController: AVAudioPlayerDelegate {
+    func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        updateViews()
+        cancelTimer()
+    }
+    
+    func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
+        if let error = error {
+            print("Audio Player error occured: \(error)")
+        }
+    }
+}
